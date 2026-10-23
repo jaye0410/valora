@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="/static/css/style.css">
+  <!-- marked.js と DOMPurify の読み込み -->
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/dompurify@3.0.9/dist/purify.min.js"></script>
+  <title>valora - 財務分析Webアプリ</title>
+</head>
+<body>
+  <div class="app-container">
+    <header class="app-header">
+      <h1>valora</h1>
+      <p class="subtitle">Financial Analysis Assistant</p>
+    </header>
+
+    <main class="main-content">
+
+      <div class="earnings-widget">
+        <div class="earnings-header">
+          <h2>保有銘柄 決算スケジュール</h2>
+          <div class="header-actions">
+            <button id="managePortfolioBtn" class="toggle-btn" title="ポートフォリオ編集">銘柄を一括編集</button>
+            <button id="toggle-earnings-btn" class="toggle-btn">表示する</button>
+          </div>
+        </div>
+        <div id="earnings-container" class="earnings-container collapsed">
+          <div class="portfolio-quick-add">
+            <input type="text" id="newTickerInput" placeholder="銘柄を追加 (例: NVDA, 7203)" autocomplete="off">
+            <button id="addTickerBtn" class="quick-add-btn">+ 追加</button>
+          </div>
+          <table id="earnings-table">
+            <thead>
+              <tr>
+                <th>ティッカー</th>
+                <th>企業名</th>
+                <th>次回決算日</th>
+                <th class="action-th">操作</th>
+              </tr>
+            </thead>
+            <tbody id="earnings-tbody">
+              <tr>
+                <td colspan="4" class="loading">読み込み中...</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="search-box">
+        <input type="text" id="tickerInput" placeholder="ティッカーコードを入力 (例: 7203, AAPL)" autocomplete="off">
+        <button id="analyzeBtn">分析実行</button>
+      </div>
+
+      <div id="loading" class="loading-container hidden">
+        <div class="spinner"></div>
+        <p>企業データを取得・分析中...</p>
+      </div>
+
+      <div id="resultContainer" class="result-card hidden">
+        <div class="company-header">
+          <div class="company-title-area">
+            <h2 id="companyName"></h2>
+            <span id="sectorBadge" class="badge"></span>
+          </div>
+
+          <div class="metrics-grid">
+            <div class="metric-card">
+              <span class="metric-label">時価総額</span>
+              <strong id="marketCap" class="metric-value">-</strong>
+            </div>
+            <div class="metric-card">
+              <span class="metric-label">PER (株価収益率)</span>
+              <strong id="peRatio" class="metric-value">-</strong>
+            </div>
+            <div class="metric-card">
+              <span class="metric-label">ROE (自己資本利益率)</span>
+              <strong id="roe" class="metric-value">-</strong>
+            </div>
+            <div class="metric-card">
+              <span class="metric-label">配当利回り</span>
+              <strong id="dividendYield" class="metric-value">-</strong>
+            </div>
+            <div class="metric-card">
+              <span class="metric-label">営業キャッシュフロー</span>
+              <strong id="operatingCashflow" class="metric-value">-</strong>
+            </div>
+            <div class="metric-card">
+              <span class="metric-label">フリーキャッシュフロー</span>
+              <strong id="freeCashflow" class="metric-value">-</strong>
+            </div>
+            <div class="metric-card">
+              <span class="metric-label">直近決算発表日</span>
+              <strong id="pastEarningsDate" class="metric-value">-</strong>
+            </div>
+            <div class="metric-card highlight-card">
+              <span class="metric-label">次回決算発表予定日</span>
+              <strong id="nextEarningsDate" class="metric-value highlight">-</strong>
+            </div>
+          </div>
+        </div>
+
+        <div class="analysis-body">
+          <h3>分析レポート</h3>
+          <div id="analysisText" class="markdown-output"></div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <!-- ポートフォリオ一括編集モーダル -->
+  <div id="portfolioModal" class="modal-overlay hidden">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>保有銘柄（ポートフォリオ）の一括編集</h3>
+        <button id="closeModalBtn" class="close-btn">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p class="modal-desc">ティッカーコードを改行区切りで入力してください（4桁数字の日本株は自動で .T が付与されます）。</p>
+        <textarea id="portfolioTextarea" rows="10" placeholder="AAPL&#10;NVDA&#10;7203.T"></textarea>
+      </div>
+      <div class="modal-footer">
+        <button id="cancelModalBtn" class="toggle-btn">キャンセル</button>
+        <button id="savePortfolioBtn" class="save-btn">保存して反映</button>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="/static/js/api.js"></script>
+  <script type="module" src="/static/js/app.js"></script>
+</body>
+</html>
