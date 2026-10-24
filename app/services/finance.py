@@ -4,7 +4,8 @@ import logging
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
-import yfinance as yf
+# import yfinance as yf  # Deprecated, using unified data provider
+from data_provider import get_symbol_earnings, get_earnings_calendar as provider_earnings_calendar
 import pandas as pd
 
 from app.services.cache import ttl_cache
@@ -62,35 +63,46 @@ def remove_portfolio_ticker(ticker_symbol: str) -> list[str]:
   return new_tickers
 
 def _fetch_single_calendar(ticker_symbol: str) -> dict:
-  """単一銘柄の決算予定日を取得（並列ワーカー用）"""
-  try:
-    ticker = yf.Ticker(ticker_symbol)
-    info = ticker.info or {}
-    company_name = info.get("longName", info.get("shortName", ticker_symbol))
-    
-    next_date = "N/A"
-    cal = ticker.calendar
-    if cal is not None and "Earnings Date" in cal:
-      dates = cal["Earnings Date"]
-      if len(dates) > 0:
-        raw_date = dates[0]
-        if isinstance(raw_date, (datetime, type(datetime.now()))):
-          next_date = raw_date.strftime("%Y-%m-%d")
-        else:
-          next_date = str(raw_date)[:10]
-    
-    return {
-      "ticker": ticker_symbol,
-      "company_name": company_name,
-      "next_earnings_date": next_date
-    }
-  except Exception as e:
-    logger.warning(f"Error fetching earnings for {ticker_symbol}: {e}")
-    return {
-      "ticker": ticker_symbol,
-      "company_name": "Error fetching data",
-      "next_earnings_date": "N/A"
-    }
+    """Fetch earnings calendar for a single ticker using the unified data provider.
+    Returns a dict compatible with the previous yfinance based implementation.
+    """
+    try:
+        # Retrieve earnings data via the provider
+        data = get_symbol_earnings(ticker_symbol)
+        # Determine next earnings date from provider response
+        next_date = "N/A"
+        # Alpha Vantage format
+        if isinstance(data, dict) and "quarterlyEarnings" in data:
+            try:
+                recent = data["quarterlyEarnings"][-1]
+                next_date = recent.get("reportedDate", "N/A")
+            except Exception:
+                pass
+        # Finnhub format
+        if isinstance(data, dict) and "earningsCalendar" in data:
+            try:
+                from datetime import datetime
+                today = datetime.utcnow().date()
+                future = [e for e in data["earningsCalendar"] if e.get("date")]
+                dates = [datetime.fromisoformat(e["date"]).date() for e in future]
+                future_dates = [d for d in dates if d >= today]
+                if future_dates:
+                    next_date = min(future_dates).isoformat()
+            except Exception:
+                pass
+        company_name = data.get("symbol", ticker_symbol)
+        return {
+            "ticker": ticker_symbol,
+            "company_name": company_name,
+            "next_earnings_date": next_date,
+        }
+    except Exception as e:
+        logger.warning(f"Error fetching earnings for {ticker_symbol}: {e}")
+        return {
+            "ticker": ticker_symbol,
+            "company_name": "Error fetching data",
+            "next_earnings_date": "N/A",
+        }
 
 @ttl_cache(ttl=1800)
 def get_earnings_calendar() -> list[dict]:
